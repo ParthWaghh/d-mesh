@@ -22,3 +22,9 @@ build/
 
 # Firmware build artifacts
 .pio/
+
+# Android
+.gradle/
+android/.gradle/
+android/app/build/
+

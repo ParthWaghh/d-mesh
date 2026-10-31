@@ -27,7 +27,7 @@ dependencies:
 
   # Networking & Real-Time Hardware Communication
   http: ^1.2.1
-  web_socket_channel: ^2.4.5
+  web_socket_channel: ^3.0.3
   network_info_plus: ^5.0.3
 
   # Speech & Audio

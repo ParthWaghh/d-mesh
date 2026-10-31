@@ -105,3 +105,4 @@ class OfflineTileManager {
     return downloadedCount;
   }
 }
+

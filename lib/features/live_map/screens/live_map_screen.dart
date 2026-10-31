@@ -9,6 +9,7 @@ import '../../../core/utils/geo_utils.dart';
 import '../../../domain/entities/geo_note.dart';
 import '../../../domain/entities/node.dart';
 import '../../shared/providers.dart';
+import '../services/offline_tile_manager.dart';
 
 class LiveMapScreen extends ConsumerStatefulWidget {
   const LiveMapScreen({super.key});
@@ -19,8 +20,8 @@ class LiveMapScreen extends ConsumerStatefulWidget {
 
 class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
   final MapController _mapController = MapController();
-  LatLng _currentCenter = const LatLng(AppConstants.defaultLatitude, AppConstants.defaultLongitude);
-  double _currentZoom = AppConstants.defaultMapZoom;
+  final LatLng _currentCenter = const LatLng(AppConstants.defaultLatitude, AppConstants.defaultLongitude);
+  final double _currentZoom = AppConstants.defaultMapZoom;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +45,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.layers_outlined),
-            tooltip: 'Map Layer Controls',
+            tooltip: 'Map Layer Controls & Offline Cache',
             onPressed: () => _showLayerControls(context),
           ),
         ],
@@ -391,7 +392,6 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
                       label: const Text('Send Message'),
                       onPressed: () {
                         Navigator.pop(ctx);
-                        // Navigate to chat
                       },
                     ),
                   ),
@@ -638,7 +638,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
               const SizedBox(height: 12),
               SwitchListTile(
                 title: const Text('Offline Tile Cache'),
-                subtitle: const Text('Store viewed OpenStreetMap tiles in local SQLite/disk'),
+                subtitle: const Text('Store viewed OpenStreetMap tiles in local device memory'),
                 value: true,
                 onChanged: (val) {},
               ),
@@ -648,11 +648,106 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
                 value: true,
                 onChanged: (val) {},
               ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  backgroundColor: AppColors.surfaceLight,
+                  foregroundColor: AppColors.cyan,
+                  side: const BorderSide(color: AppColors.cyan),
+                ),
+                icon: const Icon(Icons.download_for_offline),
+                label: const Text('PRE-CACHE DISASTER REGION TILES'),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _showPrecacheDialog(context);
+                },
+              ),
             ],
           ),
         );
       },
     );
   }
-}
 
+  void _showPrecacheDialog(BuildContext context) {
+    int downloaded = 0;
+    int total = 1;
+    bool isDownloading = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppColors.surface,
+              title: const Text('PRE-CACHE OFFLINE MAP TILES'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Pre-download all OpenStreetMap tiles for the 10km disaster staging area surrounding the gateway (Zoom levels 12 to 14) for 100% offline navigation.',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  if (isDownloading) ...[
+                    LinearProgressIndicator(
+                      value: total > 0 ? (downloaded / total) : 0,
+                      backgroundColor: AppColors.charcoal,
+                      color: AppColors.cyan,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Cached $downloaded / $total tiles...',
+                      style: const TextStyle(fontSize: 12, color: AppColors.cyan),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDownloading ? null : () => Navigator.pop(ctx),
+                  child: const Text('Close', style: TextStyle(color: AppColors.textMuted)),
+                ),
+                if (!isDownloading)
+                  ElevatedButton(
+                    onPressed: () async {
+                      setDialogState(() => isDownloading = true);
+
+                      await OfflineTileManager.cacheDisasterRegion(
+                        minLat: AppConstants.defaultLatitude - 0.05,
+                        maxLat: AppConstants.defaultLatitude + 0.05,
+                        minLon: AppConstants.defaultLongitude - 0.05,
+                        maxLon: AppConstants.defaultLongitude + 0.05,
+                        minZoom: 12,
+                        maxZoom: 14,
+                        onProgress: (dl, tot) {
+                          setDialogState(() {
+                            downloaded = dl;
+                            total = tot;
+                          });
+                        },
+                      );
+
+                      if (context.mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.greenOnline,
+                            content: Text('Successfully pre-cached $downloaded offline map tiles!'),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('Start Download'),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}

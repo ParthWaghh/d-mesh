@@ -33,6 +33,7 @@ jobs:
           cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml.bak
           flutter create . --platforms=android --org com.dmesh.emergency.network
           cp /tmp/AndroidManifest.xml.bak android/app/src/main/AndroidManifest.xml
+          rm -f test/widget_test.dart
 
       - name: Install Dependencies
         run: flutter pub get

@@ -30,7 +30,7 @@ class TacticalTheme {
         ),
         iconTheme: IconThemeData(color: AppColors.cyan),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 2,
         shadowColor: Colors.black54,

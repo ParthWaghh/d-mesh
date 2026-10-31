@@ -22,12 +22,15 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
   final MapController _mapController = MapController();
   final LatLng _currentCenter = const LatLng(AppConstants.defaultLatitude, AppConstants.defaultLongitude);
   final double _currentZoom = AppConstants.defaultMapZoom;
+  bool _showRangeRings = true;
 
   @override
   Widget build(BuildContext context) {
     final nodes = ref.watch(nodeListProvider);
     final notes = ref.watch(noteListProvider);
     final gateway = ref.watch(gatewayStateProvider);
+
+    const gatewayPos = LatLng(AppConstants.defaultLatitude, AppConstants.defaultLongitude);
 
     return Scaffold(
       appBar: AppBar(
@@ -37,10 +40,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
             icon: const Icon(Icons.my_location),
             tooltip: 'Center on Gateway',
             onPressed: () {
-              _mapController.move(
-                const LatLng(AppConstants.defaultLatitude, AppConstants.defaultLongitude),
-                AppConstants.defaultMapZoom,
-              );
+              _mapController.move(gatewayPos, AppConstants.defaultMapZoom);
             },
           ),
           IconButton(
@@ -67,12 +67,37 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
                 userAgentPackageName: 'com.dmesh.emergency.network',
               ),
 
+              // Range Rings Circle Layer (Estimated Sub-GHz LoRa Propagation)
+              if (_showRangeRings)
+                CircleLayer(
+                  circles: [
+                    // 3km inner tactical circle
+                    CircleMarker(
+                      point: gatewayPos,
+                      radius: 3000,
+                      useRadiusInMeter: true,
+                      color: AppColors.cyan.withOpacity(0.08),
+                      borderColor: AppColors.cyan.withOpacity(0.4),
+                      borderStrokeWidth: 1.5,
+                    ),
+                    // 8km outer maximum propagation boundary
+                    CircleMarker(
+                      point: gatewayPos,
+                      radius: 8000,
+                      useRadiusInMeter: true,
+                      color: AppColors.blueAccent.withOpacity(0.04),
+                      borderColor: AppColors.blueAccent.withOpacity(0.3),
+                      borderStrokeWidth: 1.2,
+                    ),
+                  ],
+                ),
+
               // Markers Layer
               MarkerLayer(
                 markers: [
                   // Gateway Marker
                   Marker(
-                    point: const LatLng(AppConstants.defaultLatitude, AppConstants.defaultLongitude),
+                    point: gatewayPos,
                     width: 50,
                     height: 50,
                     child: GestureDetector(
@@ -329,6 +354,16 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
   }
 
   void _showNodeDetails(BuildContext context, MeshNode node) {
+    double? distFromGateway;
+    if (node.hasValidLocation) {
+      distFromGateway = GeoUtils.distanceInMeters(
+        AppConstants.defaultLatitude,
+        AppConstants.defaultLongitude,
+        node.latitude!,
+        node.longitude!,
+      );
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -378,11 +413,17 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              if (node.hasValidLocation)
+              if (node.hasValidLocation) ...[
                 Text(
                   'GPS: ${GeoUtils.formatCoordinates(node.latitude!, node.longitude!)}',
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
+                if (distFromGateway != null)
+                  Text(
+                    'Range from Gateway: ${GeoUtils.formatDistance(distFromGateway)}',
+                    style: const TextStyle(color: AppColors.cyan, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+              ],
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -416,6 +457,13 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
   }
 
   void _showNoteDetails(BuildContext context, GeoNote note) {
+    final distFromGateway = GeoUtils.distanceInMeters(
+      AppConstants.defaultLatitude,
+      AppConstants.defaultLongitude,
+      note.latitude,
+      note.longitude,
+    );
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -445,7 +493,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
               const Divider(height: 24),
               Text(note.description, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
               const SizedBox(height: 12),
-              Text('Location: ${GeoUtils.formatCoordinates(note.latitude, note.longitude)}',
+              Text('Location: ${GeoUtils.formatCoordinates(note.latitude, note.longitude)} (${GeoUtils.formatDistance(distFromGateway)} from Gateway)',
                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               Text('Author: ${note.authorNodeId} • Status: ${note.syncStatus.name.toUpperCase()}',
                   style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
@@ -628,43 +676,44 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
       context: context,
       backgroundColor: AppColors.surface,
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('MAP LAYERS & CACHING', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                title: const Text('Offline Tile Cache'),
-                subtitle: const Text('Store viewed OpenStreetMap tiles in local device memory'),
-                value: true,
-                onChanged: (val) {},
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('MAP LAYERS & CACHING', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: const Text('Show LoRa RF Range Rings'),
+                    subtitle: const Text('Render 3km & 8km estimated RF propagation circles'),
+                    value: _showRangeRings,
+                    onChanged: (val) {
+                      setSheetState(() => _showRangeRings = val);
+                      setState(() => _showRangeRings = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44),
+                      backgroundColor: AppColors.surfaceLight,
+                      foregroundColor: AppColors.cyan,
+                      side: const BorderSide(color: AppColors.cyan),
+                    ),
+                    icon: const Icon(Icons.download_for_offline),
+                    label: const Text('PRE-CACHE DISASTER REGION TILES'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _showPrecacheDialog(context);
+                    },
+                  ),
+                ],
               ),
-              SwitchListTile(
-                title: const Text('Show LoRa RF Range Rings'),
-                subtitle: const Text('Render 3km & 8km estimated RF propagation circles'),
-                value: true,
-                onChanged: (val) {},
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(44),
-                  backgroundColor: AppColors.surfaceLight,
-                  foregroundColor: AppColors.cyan,
-                  side: const BorderSide(color: AppColors.cyan),
-                ),
-                icon: const Icon(Icons.download_for_offline),
-                label: const Text('PRE-CACHE DISASTER REGION TILES'),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _showPrecacheDialog(context);
-                },
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

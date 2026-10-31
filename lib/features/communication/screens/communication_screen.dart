@@ -56,6 +56,18 @@ class _CommunicationScreenState extends ConsumerState<CommunicationScreen> {
     });
   }
 
+  void _retryMessage(MeshMessage failedMsg) {
+    ref.read(messageListProvider.notifier).addMessage(
+          failedMsg.copyWith(
+            status: MessageStatus.queued,
+            timestamp: DateTime.now(),
+          ),
+        );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Re-queuing message ${failedMsg.id.substring(0, 8)} for LoRa transmission...')),
+    );
+  }
+
   void _openAudioMemoModal() {
     showModalBottomSheet(
       context: context,
@@ -181,82 +193,97 @@ class _CommunicationScreenState extends ConsumerState<CommunicationScreen> {
   }
 
   Widget _buildMessageBubble(MeshMessage msg, bool isMe) {
+    final isFailed = msg.status == MessageStatus.failed;
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isMe ? AppColors.surfaceLight : AppColors.surface,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: Radius.circular(isMe ? 12 : 2),
-            bottomRight: Radius.circular(isMe ? 2 : 12),
+      child: GestureDetector(
+        onTap: isFailed ? () => _retryMessage(msg) : null,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isFailed
+                ? AppColors.redEmergency.withOpacity(0.12)
+                : (isMe ? AppColors.surfaceLight : AppColors.surface),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(12),
+              topRight: const Radius.circular(12),
+              bottomLeft: Radius.circular(isMe ? 12 : 2),
+              bottomRight: Radius.circular(isMe ? 2 : 12),
+            ),
+            border: Border.all(
+              color: isFailed
+                  ? AppColors.redEmergency
+                  : (isMe ? AppColors.cyan.withOpacity(0.3) : AppColors.surfaceBorder),
+              width: 1,
+            ),
           ),
-          border: Border.all(
-            color: isMe ? AppColors.cyan.withOpacity(0.3) : AppColors.surfaceBorder,
-            width: 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  msg.sourceNode,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: isMe ? AppColors.cyan : AppColors.orangeWarning,
-                  ),
-                ),
-                if (msg.isBroadcast) ...[
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppColors.orangeWarning.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
+          child: Column(
+            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    msg.sourceNode,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isFailed ? AppColors.redEmergency : (isMe ? AppColors.cyan : AppColors.orangeWarning),
                     ),
-                    child: const Text('ALL', style: TextStyle(color: AppColors.orangeWarning, fontSize: 9, fontWeight: FontWeight.bold)),
                   ),
+                  if (msg.isBroadcast) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppColors.orangeWarning.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('ALL', style: TextStyle(color: AppColors.orangeWarning, fontSize: 9, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              msg.content,
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (msg.rssi != null) ...[
-                  Text('${msg.rssi} dBm', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                  const SizedBox(width: 6),
-                ],
-                Text(
-                  '${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
-                ),
-                if (isMe) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    msg.status == MessageStatus.delivered
-                        ? Icons.done_all
-                        : (msg.status == MessageStatus.sent ? Icons.done : Icons.access_time),
-                    size: 12,
-                    color: msg.status == MessageStatus.delivered ? AppColors.greenOnline : AppColors.textMuted,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                msg.content,
+                style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (msg.rssi != null) ...[
+                    Text('${msg.rssi} dBm', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    '${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
                   ),
+                  if (isMe) ...[
+                    const SizedBox(width: 4),
+                    if (isFailed) ...[
+                      const Icon(Icons.error_outline, size: 13, color: AppColors.redEmergency),
+                      const SizedBox(width: 3),
+                      const Text('Failed (Tap to retry)', style: TextStyle(color: AppColors.redEmergency, fontSize: 9, fontWeight: FontWeight.bold)),
+                    ] else ...[
+                      Icon(
+                        msg.status == MessageStatus.delivered
+                            ? Icons.done_all
+                            : (msg.status == MessageStatus.sent ? Icons.done : Icons.access_time),
+                        size: 12,
+                        color: msg.status == MessageStatus.delivered ? AppColors.greenOnline : AppColors.textMuted,
+                      ),
+                    ],
+                  ],
                 ],
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

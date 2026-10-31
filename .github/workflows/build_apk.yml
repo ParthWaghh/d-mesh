@@ -28,6 +28,12 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Recreate Android Scaffolding with Official Flutter Toolchain
+        run: |
+          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml.bak
+          flutter create . --platforms=android --org com.dmesh.emergency.network
+          cp /tmp/AndroidManifest.xml.bak android/app/src/main/AndroidManifest.xml
+
       - name: Install Dependencies
         run: flutter pub get
 

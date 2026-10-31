@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/message.dart';
 import '../../shared/providers.dart';
+import '../widgets/audio_memo_sheet.dart';
 
 class CommunicationScreen extends ConsumerStatefulWidget {
   const CommunicationScreen({super.key});
@@ -55,6 +56,20 @@ class _CommunicationScreenState extends ConsumerState<CommunicationScreen> {
     });
   }
 
+  void _openAudioMemoModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AudioMemoSheet(
+        destinationNode: _selectedDestination,
+        onDispatched: () {
+          ref.read(messageListProvider.notifier).loadMessages();
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(messageListProvider);
@@ -64,6 +79,12 @@ class _CommunicationScreenState extends ConsumerState<CommunicationScreen> {
       appBar: AppBar(
         title: const Text('LORA MESH CHAT'),
         actions: [
+          // Voice memo action
+          IconButton(
+            tooltip: 'Record Wi-Fi Voice Memo',
+            icon: const Icon(Icons.graphic_eq, color: AppColors.cyan),
+            onPressed: _openAudioMemoModal,
+          ),
           // Destination Node Selector Dropdown
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -253,6 +274,7 @@ class _CommunicationScreenState extends ConsumerState<CommunicationScreen> {
           children: [
             // Speech-to-text mic button
             IconButton(
+              tooltip: 'Speech-to-Text Dictation',
               icon: Icon(
                 _isRecording ? Icons.mic : Icons.mic_none,
                 color: _isRecording ? AppColors.redEmergency : AppColors.cyan,
@@ -260,7 +282,6 @@ class _CommunicationScreenState extends ConsumerState<CommunicationScreen> {
               onPressed: () {
                 setState(() => _isRecording = !_isRecording);
                 if (_isRecording) {
-                  // Simulate speech transcription or provide hook
                   Future.delayed(const Duration(seconds: 2), () {
                     if (mounted && _isRecording) {
                       _textController.text = 'Emergency at sector 4. Team requires immediate assistance.';
@@ -269,6 +290,12 @@ class _CommunicationScreenState extends ConsumerState<CommunicationScreen> {
                   });
                 }
               },
+            ),
+            // Audio Voice Memo Button
+            IconButton(
+              tooltip: 'Record Voice Memo',
+              icon: const Icon(Icons.audio_file_outlined, color: AppColors.cyan),
+              onPressed: _openAudioMemoModal,
             ),
             Expanded(
               child: TextField(
@@ -305,4 +332,3 @@ class _CommunicationScreenState extends ConsumerState<CommunicationScreen> {
     );
   }
 }
-

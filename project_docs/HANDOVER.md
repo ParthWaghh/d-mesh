@@ -198,3 +198,4 @@ decentrlized communication/
 3. **End-to-End Field Verification**:
    - Verify connection to Wi-Fi `DMESH-GATEWAY-ALPHA`.
    - Test sending text messages, geo-notes, and emergency SOS alerts over the 433MHz LoRa radio.
+

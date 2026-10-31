@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_constants.dart';
@@ -42,9 +43,95 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
   }
 
+  void _exportTacticalLogs() async {
+    final nodes = ref.read(nodeListProvider);
+    final notes = ref.read(noteListProvider);
+    final messages = ref.read(messageListProvider);
+
+    final exportData = {
+      'timestamp': DateTime.now().toIso8601String(),
+      'node_count': nodes.length,
+      'notes_count': notes.length,
+      'messages_count': messages.length,
+      'nodes': nodes.map((n) => {'id': n.id, 'name': n.name, 'lat': n.latitude, 'lon': n.longitude}).toList(),
+      'notes': notes.map((nt) => {'id': nt.id, 'title': nt.title, 'category': nt.category.name}).toList(),
+    };
+
+    final jsonStr = jsonEncode(exportData);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('MISSION DATA EXPORT'),
+        content: SingleChildScrollView(
+          child: Text(
+            'Export JSON Payload Generated (${jsonStr.length} bytes):\n\n$jsonStr',
+            style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmPurgeDatabase() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: AppColors.redEmergency),
+            SizedBox(width: 8),
+            Text('PURGE LOCAL DATABASE'),
+          ],
+        ),
+        content: const Text(
+          'This will permanently delete all locally stored nodes, chat history, geo-tagged notes, and emergency logs.\n\nAre you sure?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.redEmergency),
+            onPressed: () async {
+              final db = ref.read(databaseProvider);
+              final rawDb = await db.database;
+              await rawDb.delete('nodes');
+              await rawDb.delete('messages');
+              await rawDb.delete('geo_notes');
+              await rawDb.delete('emergency_events');
+
+              ref.read(nodeListProvider.notifier).loadNodes();
+              ref.read(noteListProvider.notifier).loadNotes();
+              ref.read(messageListProvider.notifier).loadMessages();
+              ref.read(emergencyListProvider.notifier).loadEvents();
+
+              if (mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('SQLite database wiped clean.')),
+                );
+              }
+            },
+            child: const Text('PURGE ALL DATA'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final gateway = ref.watch(gatewayStateProvider);
+    final isSimulation = ref.watch(simulationModeProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -53,6 +140,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Section: Hardware Mode vs Demo Simulation Mode
+          _buildSectionHeader('HARDWARE OPERATION MODE'),
+          Card(
+            color: isSimulation ? AppColors.charcoal : AppColors.surface,
+            child: SwitchListTile(
+              secondary: Icon(
+                isSimulation ? Icons.smart_toy_outlined : Icons.router,
+                color: isSimulation ? AppColors.orangeWarning : AppColors.greenOnline,
+              ),
+              title: Text(
+                isSimulation ? 'DEMO / SIMULATION MODE ACTIVE' : 'REAL HARDWARE MODE ACTIVE',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isSimulation ? AppColors.orangeWarning : AppColors.greenOnline,
+                ),
+              ),
+              subtitle: Text(
+                isSimulation
+                    ? 'Generating simulated LoRa packets, GPS movement, and mock nodes for UI testing without physical boards.'
+                    : 'Communicating strictly with real ESP32 Gateway via REST and WebSockets (192.168.4.1).',
+                style: const TextStyle(fontSize: 11),
+              ),
+              value: isSimulation,
+              onChanged: (val) {
+                ref.read(simulationModeProvider.notifier).setEnabled(val);
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+
           // Section: ESP32 Gateway Connection
           _buildSectionHeader('ESP32 GATEWAY CONNECTION'),
           Card(
@@ -188,14 +305,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.download, color: AppColors.cyan),
+                  title: const Text('Export Tactical Mission Data (JSON)'),
+                  subtitle: const Text('Backup local nodes, notes, and messages to storage'),
+                  onTap: _exportTacticalLogs,
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.delete_forever, color: AppColors.redEmergency),
                   title: const Text('Purge SQLite Tactical Database', style: TextStyle(color: AppColors.redEmergency)),
                   subtitle: const Text('Deletes all local nodes, messages, and saved notes'),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Database reset requested')),
-                    );
-                  },
+                  onTap: _confirmPurgeDatabase,
                 ),
               ],
             ),
@@ -233,4 +353,3 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 }
-

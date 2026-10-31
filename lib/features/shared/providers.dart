@@ -12,6 +12,7 @@ import '../../domain/entities/node.dart';
 import '../../domain/repositories/message_repository.dart';
 import '../../domain/repositories/node_repository.dart';
 import '../../domain/repositories/note_repository.dart';
+import '../../services/mock_hardware_simulator.dart';
 
 // --- DATABASE & REPOSITORY PROVIDERS ---
 
@@ -358,7 +359,6 @@ class RouteListNotifier extends StateNotifier<List<MeshRoute>> {
 
   Future<void> loadRoutes() async {
     final rows = await _database.getAllRoutes();
-    // Parse routes
     state = [];
   }
 
@@ -373,3 +373,48 @@ final routeListProvider =
   return RouteListNotifier(db);
 });
 
+// --- MOCK SIMULATION ENGINE ---
+
+final simulatorProvider = Provider<MockHardwareSimulator>((ref) {
+  final nodeNotifier = ref.watch(nodeListProvider.notifier);
+  final msgNotifier = ref.watch(messageListProvider.notifier);
+  final emNotifier = ref.watch(emergencyListProvider.notifier);
+
+  return MockHardwareSimulator(
+    nodeListNotifier: nodeNotifier,
+    messageListNotifier: msgNotifier,
+    emergencyListNotifier: emNotifier,
+  );
+});
+
+class SimulationNotifier extends StateNotifier<bool> {
+  final MockHardwareSimulator _simulator;
+
+  SimulationNotifier(this._simulator) : super(false);
+
+  void toggle() {
+    if (state) {
+      _simulator.stop();
+      state = false;
+    } else {
+      _simulator.start();
+      state = true;
+    }
+  }
+
+  void setEnabled(bool enabled) {
+    if (enabled) {
+      _simulator.start();
+      state = true;
+    } else {
+      _simulator.stop();
+      state = false;
+    }
+  }
+}
+
+final simulationModeProvider =
+    StateNotifierProvider<SimulationNotifier, bool>((ref) {
+  final sim = ref.watch(simulatorProvider);
+  return SimulationNotifier(sim);
+});

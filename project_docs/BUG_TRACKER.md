@@ -9,6 +9,8 @@ This document tracks unresolved, active, and resolved defects across hardware fi
 | Issue ID | Module | Severity | Description | Status | Resolution / Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **BUG-000** | Environment | Low | Flutter SDK not registered in active shell PATH on host | Open (Host specific) | Source code structured cleanly for compilation on any standard Flutter environment. |
+| **BUG-001** | UI / Theme | Medium | CardTheme incompatible with Flutter 3.27+ | Resolved | Replaced CardTheme with CardThemeData in tactical_theme.dart. |
+| **BUG-002** | Android / Gradle | High | speech_to_text 6.6.2 jcenter() & AGP 9 DSL failure | Resolved | Upgraded speech_to_text to ^7.5.0, opted out of android.newDsl in gradle.properties. |
 | **HW-001** | Hardware / RF | High | Antenna requirement for SX1278 | Known Precaution | Never power or transmit on SX1278 without an antenna attached. High VSWR can destroy output power amplifier. |
 | **HW-002** | GPS / Indoors | Medium | NEO-6M Cold Start & Indoor TTFF | Known Limitation | NEO-6M requires outdoor line of sight to satellites for first GPS fix. Firmware falls back gracefully to default staging coordinates (19.9975, 73.7898). |
 | **HW-003** | LoRa Airtime | Medium | Duty Cycle & MTU constraints | Handled by Protocol | SX1278 MTU capped at 220 bytes. High-bandwidth media (audio/images) is routed over local Wi-Fi, sending only compact metadata notifications over LoRa. |

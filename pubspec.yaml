@@ -31,7 +31,7 @@ dependencies:
   network_info_plus: ^5.0.3
 
   # Speech & Audio
-  speech_to_text: ^6.6.1
+  speech_to_text: ^7.5.0
   audioplayers: ^6.0.0
 
   # Cryptography & Security

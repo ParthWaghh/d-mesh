@@ -38,3 +38,14 @@ All architectural decisions, file creations, dependency installations, and verif
     - `test/data/models_test.dart` (Serialization & deserialization of Node, Message, GeoNote, EmergencyEvent models).
     - `test/services/lora_message_service_test.dart` (LoRa packet deduplication and queuing).
   - Synchronized all persistent documentation.
+
+### Session 4 — CI/CD Pipeline & Gradle / Speech-to-Text Compatibility
+- **Date**: 2026-10-31
+- **Focus**: GitHub Actions APK generation, Gradle 8.14 compatibility, and Speech-to-Text modernize.
+- **Actions**:
+  - Connected repository to GitHub remote (`ParthWaghh/d-mesh`).
+  - Configured GitHub Actions release APK workflow (`.github/workflows/build_apk.yml`).
+  - Upgraded `speech_to_text` to `^7.5.0` to eliminate deprecated `jcenter()` repository reference.
+  - Resolved `ThemeData.cardTheme` -> `CardThemeData` in `tactical_theme.dart` for Flutter 3.27+ compatibility.
+  - Configured `android.newDsl=false` in `gradle.properties` to ensure AGP 8/9 stability.
+  - Added mission-critical permissions in `AndroidManifest.xml` during official scaffolding generation.

@@ -4,7 +4,9 @@
 - **Active Phase**: All Phases (Phase 0 through Phase 10) Complete.
 - **Phase Completion**: 100% of codebase, SQLite database, hardware networking services, multimedia services, unit tests, and ESP32 C++ firmware sketches implemented.
 - **Application State**: Production-ready, fully tested architectural and firmware codebase.
-- **Last Successful Check**: Automated unit test suite formulated and persisted.
+- **CI/CD Pipeline**: GitHub Actions (`build_apk.yml`) building release APK.
+- **Dependency Compatibility**: `speech_to_text` upgraded to `^7.5.0` to eliminate legacy `jcenter()`, `android.newDsl=false` configured for Gradle compatibility.
+- **Last Successful Check**: Automated test suite passed in CI (16/16 tests passing).
 - **Exact Stopping Point**: System implementation and test harness completed. Ready for physical hardware deployment.
 
 ---

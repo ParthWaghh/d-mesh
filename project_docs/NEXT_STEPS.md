@@ -15,7 +15,11 @@ Completed full engineering of:
 
 ### Actionable Next Steps for Deployment & Physical Verification
 
-1. **Hardware Firmware Flashing**:
+1. **Download Release APK**:
+   - Download the built release `.apk` directly from GitHub Actions: `https://github.com/ParthWaghh/d-mesh/actions`
+   - Install on target Android devices (Android 8.0+ / API 26+).
+
+2. **Hardware Firmware Flashing**:
    - Open [firmware/esp32_gateway/esp32_gateway.ino](file:///c:/Users/Administrator/Desktop/decentrlized%20communication/firmware/esp32_gateway/esp32_gateway.ino) in Arduino IDE or VS Code PlatformIO.
    - Install required libraries: `ESPAsyncWebServer`, `AsyncTCP`, `LoRa`, `TinyGPSPlus`, `Adafruit_SSD1306`, `Adafruit_GFX`, `ArduinoJson`.
    - Select board **ESP32 Dev Module** and flash to the designated Gateway ESP32 board.

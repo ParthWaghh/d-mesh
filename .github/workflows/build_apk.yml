@@ -32,6 +32,7 @@ jobs:
         run: |
           rm -rf android
           flutter create . --platforms=android
+          echo "android.newDsl=false" >> android/gradle.properties
           node -e "const fs = require('fs'); const p = 'android/app/src/main/AndroidManifest.xml'; let xml = fs.readFileSync(p, 'utf8'); const perms = ['android.permission.INTERNET','android.permission.ACCESS_NETWORK_STATE','android.permission.ACCESS_WIFI_STATE','android.permission.CHANGE_WIFI_STATE','android.permission.CHANGE_NETWORK_STATE','android.permission.ACCESS_FINE_LOCATION','android.permission.ACCESS_COARSE_LOCATION','android.permission.RECORD_AUDIO','android.permission.READ_EXTERNAL_STORAGE','android.permission.WRITE_EXTERNAL_STORAGE'].map(x => '    <uses-permission android:name=\"' + x + '\"/>').join('\n'); xml = xml.replace('<application', perms + '\n    <application'); xml = xml.replace('<application', '<application\n        android:usesCleartextTraffic=\"true\"'); fs.writeFileSync(p, xml);"
           rm -f test/widget_test.dart
 
